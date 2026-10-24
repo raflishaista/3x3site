@@ -3,6 +3,6 @@
   "private": true,
   "scripts": {
     "dev": "node server.cjs",
-    "test": "node --check dist/app.js && node --test tests/render.test.cjs"
+    "test": "node --check dist/app.js && node --check dist/export.js && node --test tests/render.test.cjs"
   }
 }
