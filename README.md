@@ -32,8 +32,4 @@ Open [localhost:3313](http://localhost:3313). No dependency installation or buil
 
 ## Screenshots
 
-### Home
-
-![Home page](https://i.imgur.com/WJbJeRA.png)
-
 
