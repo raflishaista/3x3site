@@ -1,7 +1,33 @@
 # 3×3
 
-A buildless personal collection site. Run `npm run dev` and open http://127.0.0.1:3000.
+A personal page for showing your top nine books, films, games, food, or anything else in 3×3 image grids. Edit your profile, upload images or animated GIFs, add descriptions and links, and drag images or collections into your preferred order.
 
-Home is read-only. Edit changes the profile, and each collection opens its own editor. Upload images, drag or use arrow keys to reposition, adjust zoom, then save. Profile changes require Save profile; collection changes require Save 3×3. Empty slots are allowed.
+Built with plain HTML, CSS, and JavaScript. Profiles and collections are saved locally in your browser.
 
-Data is saved in IndexedDB on this browser and origin. This prototype has one local profile, no authentication, and no shared or cross-device data. Clearing browser data removes saved collections. Deploying the static source does not upload the locally entered profile or images.
+## Run locally
+
+With Node.js and npm installed, run this from the `three-by-three` project folder:
+
+```sh
+npm run dev
+```
+
+Open [localhost:3313](http://localhost:3313). No dependency installation or build step is needed.
+
+## Screenshots
+
+### Home
+
+![Home page](https://i.imgur.com/WJbJeRA.png)
+
+### Edit profile
+
+![Profile edit page](https://i.imgur.com/hK0rnJw.png)
+
+### Edit 3×3
+
+![3×3 editor](https://i.imgur.com/yUt5wTP.png)
+
+### Edit description and link
+
+![Description and link editor](https://i.imgur.com/m8ZnP4d.png)

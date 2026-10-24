@@ -1,0 +1,19 @@
+const {test}=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const vm=require('node:vm');
+const context=vm.createContext({URL,console,setTimeout,clearTimeout,document:{querySelector:()=>({addEventListener:()=>{}}),addEventListener:()=>{}},window:{addEventListener:()=>{}}});
+const source=fs.readFileSync('dist/app.js','utf8').replace('render()});init();','render()});');
+vm.runInContext(source,context);
+const run=code=>vm.runInContext(code,context);
+test('only http and https image destinations are accepted',()=>{assert.equal(run("safeLink('javascript:alert(1)')"),'');assert.equal(run("safeLink('data:text/html,hello')"),'');assert.equal(run("safeLink('https://example.com/book')"),'https://example.com/book')});
+test('GIF uses original source with a live CSS crop',()=>{const html=run("imageMarkup({source:'data:image/gif;base64,animated',width:800,height:400,zoom:1.5,x:0.1,y:0},1)");assert.match(html,/data:image\/gif/);assert.match(html,/width:300%/);assert.match(html,/left:60%/)});
+test('legacy images retain their previously saved crop',()=>{assert.match(run("imageMarkup({source:'original.png',preview:'cropped.png'})"),/src="cropped.png"/)});
+test('home images link safely and descriptions are escaped',()=>{const html=run("tiles({id:'test',slots:[{source:'x.gif',info:'<script>alert(1)</script>',link:'https://example.com'}]},'home')");assert.match(html,/href="https:\/\/example.com\/"/);assert.match(html,/&lt;script&gt;/);assert.match(html,/tip-left/);assert.doesNotMatch(html,/<script>/)});
+test('left column speechboxes open left; other columns open right',()=>{const html=run("tiles({id:'test',slots:Array(9).fill({source:'x.gif'})})");assert.equal((html.match(/tip-left/g)||[]).length,3);assert.equal((html.match(/tip-right/g)||[]).length,6)});
+test('portrait, landscape and borderless settings reach rendered grid',()=>{assert.equal(run("ratio({shape:'portrait'})"),788/1196);assert.equal(run("ratio({shape:'landscape'})"),1090/570);assert.match(run("gridMarkup({borders:false,shape:'landscape',slots:Array(9).fill(null)},'home')"),/class="grid borderless"/)});
+test('editor offers separate image and description controls for all nine slots',()=>{const html=run("tiles({slots:Array(9).fill(null)},'editor')");assert.equal((html.match(/data-image=/g)||[]).length,9);assert.equal((html.match(/data-description=/g)||[]).length,9)});
+
+test('moving an image preserves all metadata and shifts intervening slots',()=>{assert.equal(run(`JSON.stringify((()=>{const a=[{source:'a.gif',info:'A',link:'https://a.test',zoom:2},null,{source:'c.png'}];moveEntry(a,0,2);return a})())`),JSON.stringify([null,{source:'c.png'},{source:'a.gif',info:'A',link:'https://a.test',zoom:2}]))});
+test('collection order can move forward and back without losing entries',()=>{assert.equal(run(`JSON.stringify((()=>{const a=['books','films','food'];moveEntry(a,2,0);moveEntry(a,0,2);return a})())`),'["books","films","food"]')});
+test('invalid or unchanged drops do not mutate the order',()=>{assert.equal(run(`JSON.stringify((()=>{const a=[1,2,3];moveEntry(a,-1,2);moveEntry(a,0,9);moveEntry(a,1,1);return a})())`),'[1,2,3]')});

@@ -1,1 +1,8 @@
-{"name":"three-by-three","private":true,"scripts":{"dev":"node server.cjs","test":"node --check dist/app.js"}}
+{
+  "name": "three-by-three",
+  "private": true,
+  "scripts": {
+    "dev": "node server.cjs",
+    "test": "node --check dist/app.js && node --test tests/render.test.cjs"
+  }
+}
