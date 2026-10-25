@@ -1,13 +1,17 @@
 {
-  "name": "three-by-three",
+  "name": "3x3site",
   "private": true,
   "scripts": {
     "dev": "node server.cjs",
-    "test": "node --check dist/app.js && node --check dist/accounts.js && node --check dist/cloud.js && node --check dist/export.js && node --test tests/render.test.cjs tests/server.test.cjs tests/cloud.test.cjs",
-    "db:setup": "node scripts/setup-db.cjs"
+    "test": "node --check dist/app.js && node --check dist/accounts.js && node --check dist/routing.js && node --check dist/grids.js && node --check dist/cloud.js && node --check dist/export.js && node --test tests/render.test.cjs tests/server.test.cjs tests/cloud.test.cjs tests/routing.test.cjs",
+    "db:setup": "node scripts/setup-db.cjs",
+    "format": "prettier --write dist/*.js dist/*.css dist/index.html server.cjs tests/*.cjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.109.0",
     "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "prettier": "^3.9.10"
   }
 }

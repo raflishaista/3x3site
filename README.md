@@ -1,12 +1,12 @@
-# 3×3
+# 3x3site
 
 ![Home page](https://i.imgur.com/WJbJeRA.png)
 
-A personal page for showing your top nine books, films, games, food, or anything else in 3×3 image grids. Edit your profile, upload images or animated GIFs, add descriptions and links, and drag images or collections into your preferred order.
+A personal page for showing your favorite books, films, games, food, or anything else in image grids from 1×1 to 5×5, including rectangular layouts. Edit your profile, upload images or animated GIFs, add descriptions and links, and drag images or collections into your preferred order.
 
-Built with plain HTML, CSS, and JavaScript. Profiles and collections are saved locally in your browser.
+Built with plain HTML, CSS, and JavaScript. Accounts, profiles, images, and collections are saved with Supabase.
 
-User logins and user saved pages WIP.
+Register using an email code, then share your /username page.
 
 ![Profile edit page](https://i.imgur.com/hK0rnJw.png)
 

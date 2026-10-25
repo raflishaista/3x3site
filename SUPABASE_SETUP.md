@@ -15,10 +15,17 @@ the profile table, image bucket, and row-level security policies. Setup verifies
 In Authentication > URL Configuration, set Site URL to http://localhost:3313
 and add http://localhost:3313/** to Redirect URLs. Enable email/password sign-in.
 
-Register with an email and password. If email confirmation is enabled, follow the
-confirmation link in the same browser, then log in. To test multiple accounts,
-register a second email and log out before switching. Each account owns a separate
-profile. Names are display names, not unique login identifiers.
+Set Authentication > Email Templates > Confirm signup to the contents of
+supabase/confirmation-email.html. This sends {{ .Token }} as an email code.
+Register with a username, email, and password, then enter the code on the same
+registration page. A resend button is available. Each account owns a separate
+profile. Usernames are unique and form the public /username URL; login uses email.
+
+Run supabase/usernames.sql in the SQL Editor after schema.sql to add usernames
+to existing profiles and enforce uniqueness. Existing profile data is preserved.
+Profile editing is at /username/edit and account forms are /login and /register.
+The local server serves clean URLs on refresh; deployed hosting must also rewrite
+application routes to index.html.
 
 Profiles and uploaded images are public; only the owner can save a profile or
 upload to their image folder. Never put secrets in profile text. Original local
