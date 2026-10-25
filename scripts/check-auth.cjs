@@ -1,0 +1,2 @@
+process.loadEnvFile();
+(async()=>{try {const r=await fetch(process.env.SUPABASE_URL+'/auth/v1/settings',{headers:{apikey:process.env.SUPABASE_PUBLISHABLE_KEY}});const data=await r.json();console.log(JSON.stringify({status:r.status,emailEnabled:data.external?.email,emailConfirmationRequired:data.mailer_autoconfirm===false}));} catch(e){console.error('Auth API check failed: '+(e.cause?.code||'NETWORK_ERROR'));process.exitCode=1;}})();
