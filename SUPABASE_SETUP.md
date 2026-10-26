@@ -41,3 +41,20 @@ Run `npm test` for local checks.
 If the database connection rejects your password, run the contents of
 `supabase/schema.sql` directly in Supabase's SQL Editor instead. The running app
 needs only the project URL and publishable key, not a database password.
+
+## Vercel
+
+Set the Vercel Root Directory to the folder containing package.json and server.cjs
+(three-by-three if deploying from the parent repository). Keep the Node server
+entry point; do not override Output Directory to dist. The server provides both
+the public Supabase configuration endpoint and clean page routes.
+
+In Vercel Project Settings > Environment Variables, add SUPABASE_URL and
+SUPABASE_PUBLISHABLE_KEY for the deployment environment. Do not upload .env.
+DATABASE_URL is only used for migrations and is not needed by the deployed app.
+Redeploy after changing environment variables.
+
+In Supabase Authentication > URL Configuration, set Site URL to the production
+HTTPS URL and add the production URL with /** to the redirect allowlist. Retain
+http://localhost:3313/** for local development. Email-code verification does not
+require redirects, but confirmation-link fallback does.

@@ -77,4 +77,7 @@ if (require.main === module)
   server.listen(port, "127.0.0.1", () =>
     console.log("Local: http://localhost:" + port),
   );
-module.exports = { server, publicConfig };
+// Vercel imports the server directly. Named properties also support local tests.
+module.exports = server;
+module.exports.server = server;
+module.exports.publicConfig = publicConfig;

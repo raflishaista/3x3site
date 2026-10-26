@@ -39,3 +39,11 @@ test("environment files are inaccessible over HTTP", async () => {
     await new Promise((resolve) => server.close(resolve));
   }
 });
+
+test("Vercel receives an HTTP server as the module default export", async () => {
+  const { Server } = require("node:http");
+  const entry = await import("../server.cjs");
+  assert.ok(entry.default instanceof Server);
+  assert.equal(entry.default, server);
+  assert.equal(server.listening, false);
+});
