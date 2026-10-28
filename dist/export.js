@@ -154,20 +154,40 @@ async function exportProfile(profile) {
     bioTop = nameTop + nameLines.length * 58 + 14,
     ruleY = bioTop + bioLines.length * 34 + 40,
     startY = ruleY + 60;
+
   measure.font = "bold 28px Arial";
-  const titleLines = profile.collections.map((c) =>
-    exportLines(measure, c.title, card),
-  );
-  const rows = [];
-  for (let i = 0; i < profile.collections.length; i += columns)
-    rows.push(
-      card +
-        24 +
-        Math.max(...titleLines.slice(i, i + columns).map((l) => l.length)) *
-          34 +
-        46,
+  const groups = profile.groups || [];
+  const sections = [];
+  if (!groups.length) {
+    sections.push({ title: "", items: profile.collections || [] });
+  } else {
+    const ungrouped = (profile.collections || []).filter(
+      (c) => !c.groupId || !groups.some((g) => g.id === c.groupId),
     );
-  const height = startY + rows.reduce((a, b) => a + b, 0) + pad;
+    if (ungrouped.length) sections.push({ title: "", items: ungrouped });
+    for (const g of groups) {
+      sections.push({
+        title: g.title,
+        items: (profile.collections || []).filter((c) => c.groupId === g.id),
+      });
+    }
+  }
+
+  // Pre-calculate heights
+  let totalContentHeight = 0;
+  for (const sec of sections) {
+    if (sec.title) totalContentHeight += 70;
+    for (let i = 0; i < sec.items.length; i += columns) {
+      const rowItems = sec.items.slice(i, i + columns);
+      const maxLines = Math.max(
+        ...rowItems.map((c) => exportLines(measure, c.title, card).length),
+        1,
+      );
+      totalContentHeight += card + 24 + maxLines * 34 + 46;
+    }
+  }
+
+  const height = startY + totalContentHeight + pad;
   const { canvas, ctx } = exportSurface(width, height),
     load = exportLoader();
   const avatar = avatarSource(profile)
@@ -197,33 +217,78 @@ async function exportProfile(profile) {
   ctx.font = "18px monospace";
   ctx.textAlign = "left";
   ctx.fillText(
-    `Collections / ${String(profile.collections.length).padStart(2, "0")}`,
+    `Collections / ${String((profile.collections || []).length).padStart(2, "0")}`,
     pad,
     ruleY + 18,
   );
+
   let y = startY;
-  for (let i = 0; i < profile.collections.length; i++) {
-    const col = i % columns;
-    if (col === 0 && i) y += rows[Math.floor(i / columns) - 1];
-    const x = pad + col * (card + gap),
-      c = profile.collections[i],
-      size = fitExportGrid(gridRatio(c), card, card);
-    await paintExportGrid(
-      ctx,
-      c,
-      x + (card - size.width) / 2,
-      y + (card - size.height) / 2,
-      size.width,
-      size.height,
-      load,
-    );
-    ctx.fillStyle = "#eee";
-    ctx.font = "bold 28px Arial";
-    ctx.textAlign = "left";
-    ctx.textBaseline = "top";
-    titleLines[i].forEach((line, j) =>
-      ctx.fillText(line, x, y + card + 20 + j * 34),
-    );
+  for (const sec of sections) {
+    if (sec.title) {
+      ctx.strokeStyle = "#fff";
+      ctx.lineWidth = 1;
+      ctx.font = "bold 24px Arial";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      const groupText = sec.title.toUpperCase();
+      const textWidth = ctx.measureText(groupText).width;
+      const lineGap = 20;
+      const leftLineEnd = (width - textWidth) / 2 - lineGap;
+      const rightLineStart = (width + textWidth) / 2 + lineGap;
+
+      ctx.beginPath();
+      ctx.moveTo(pad, y + 25);
+      ctx.lineTo(Math.max(pad, leftLineEnd), y + 25);
+      ctx.stroke();
+
+      ctx.fillStyle = "#fff";
+      ctx.fillText(groupText, width / 2, y + 25);
+
+      ctx.beginPath();
+      ctx.moveTo(Math.min(width - pad, rightLineStart), y + 25);
+      ctx.lineTo(width - pad, y + 25);
+      ctx.stroke();
+
+      y += 65;
+    }
+
+    for (let i = 0; i < sec.items.length; i += columns) {
+      const rowItems = sec.items.slice(i, i + columns);
+      const count = rowItems.length;
+      const rowWidth = count * card + (count - 1) * gap;
+      const startX = pad + (width - pad * 2 - rowWidth) / 2;
+      const rowTitleLines = rowItems.map((c) =>
+        exportLines(measure, c.title, card),
+      );
+      const rowHeight =
+        card +
+        24 +
+        Math.max(...rowTitleLines.map((l) => l.length), 1) * 34 +
+        46;
+
+      for (let j = 0; j < count; j++) {
+        const c = rowItems[j];
+        const x = startX + j * (card + gap);
+        const size = fitExportGrid(gridRatio(c), card, card);
+        await paintExportGrid(
+          ctx,
+          c,
+          x + (card - size.width) / 2,
+          y + (card - size.height) / 2,
+          size.width,
+          size.height,
+          load,
+        );
+        ctx.fillStyle = "#eee";
+        ctx.font = "bold 28px Arial";
+        ctx.textAlign = "left";
+        ctx.textBaseline = "top";
+        rowTitleLines[j].forEach((line, k) =>
+          ctx.fillText(line, x, y + card + 20 + k * 34),
+        );
+      }
+      y += rowHeight;
+    }
   }
   return canvas;
 }

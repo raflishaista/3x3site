@@ -13,6 +13,7 @@ const context = vm.createContext({
     addEventListener: () => {},
   },
   window: { addEventListener: () => {} },
+  editorPath: (id) => "/collection/" + id,
 });
 const source = fs
   .readFileSync("dist/app.js", "utf8")
@@ -183,4 +184,50 @@ test("gaps insert into the later slot in row-major order", () => {
   assert.equal(run("insertionIndex(rects,215,50)"), 2);
   assert.equal(run("insertionIndex(rects,5,105)"), 3);
   assert.equal(run("insertionIndex(rects,500,50)"), null);
+});
+
+test("collection card in editing mode renders delete button with data-delete-grid", () => {
+  const html = run(
+    "collectionCard({id:'c1',title:'My Movies',slots:[]},0,true)",
+  );
+  assert.match(html, /class="delete-grid-btn"/);
+  assert.match(html, /data-delete-grid="c1"/);
+  assert.match(html, /aria-label="Delete My Movies"/);
+});
+
+test("collection card in public mode does not render delete button", () => {
+  const html = run(
+    "collectionCard({id:'c1',title:'My Movies',slots:[]},0,false)",
+  );
+  assert.doesNotMatch(html, /class="delete-grid-btn"/);
+});
+
+test("renderCollectionsView renders group divider with white lines and title in public mode", () => {
+  run(`state = {
+    collections: [
+      { id: 'c1', title: 'Top Movie', groupId: 'g1', slots: [] },
+      { id: 'c2', title: 'Top Book', groupId: 'g2', slots: [] }
+    ],
+    groups: [
+      { id: 'g1', title: 'Cinema' },
+      { id: 'g2', title: 'Literature' }
+    ]
+  }`);
+  const html = run("renderCollectionsView(false)");
+  assert.match(html, /class="group-divider "/);
+  assert.match(html, /class="group-divider-line"/);
+  assert.match(html, /<span class="group-divider-title">Cinema<\/span>/);
+  assert.match(html, /<span class="group-divider-title">Literature<\/span>/);
+});
+
+test("renderCollectionsView in editing mode renders group title input and delete group button", () => {
+  run(`profileDraft = {
+    collections: [{ id: 'c1', title: 'Top Movie', groupId: 'g1', slots: [] }],
+    groups: [{ id: 'g1', title: 'Cinema' }]
+  }`);
+  const html = run("renderCollectionsView(true)");
+  assert.match(html, /class="group-title-input"/);
+  assert.match(html, /data-group-title="g1"/);
+  assert.match(html, /class="delete-group-btn"/);
+  assert.match(html, /data-delete-group="g1"/);
 });

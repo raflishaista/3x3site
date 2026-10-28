@@ -6,6 +6,7 @@ const initial = {
   bio: "Books, films, and everything in between.\nA few of my favorite things.",
   avatar: "",
   columns: 2,
+  groups: [],
   collections: [
     { id: "books", title: "Books", slots: Array(9).fill(null) },
     { id: "films", title: "Films", slots: Array(9).fill(null) },
@@ -173,7 +174,16 @@ async function render() {
 function collectionCard(collection, index, editing) {
   const { columns, rows } = gridSize(collection);
   return `
-    <article class="collection ${editing ? "editable" : ""}" ${editing ? 'data-reorder="collection" tabindex="0"' : ""}>
+    <article class="collection ${editing ? "editable" : ""}" ${
+      editing
+        ? `data-reorder="collection" data-collection-id="${esc(collection.id)}" data-group-id="${esc(collection.groupId || "")}" tabindex="0" aria-label="${esc(collection.title || "Grid")}. Drag to move, or use arrow keys."`
+        : ""
+    }>
+      ${
+        editing
+          ? `<button type="button" class="delete-grid-btn" data-delete-grid="${esc(collection.id)}" aria-label="Delete ${esc(collection.title || "grid")}">×</button>`
+          : ""
+      }
       ${editing ? `<a href="${editorPath(collection.id)}">` : ""}
         <div class="card-frame">${gridMarkup(collection, editing ? "profile" : "home")}</div>
         <div class="collection-caption">
@@ -189,8 +199,83 @@ function collectionCard(collection, index, editing) {
       ${editing ? "</a>" : ""}
     </article>`;
 }
+function renderCollectionsView(editing) {
+  const profile = editing ? profileDraft : state;
+  const collections = profile?.collections || [];
+  const groups = profile?.groups || [];
+  const cols = profile?.columns || 2;
+
+  if (!groups.length) {
+    return `
+      <section class="collections" style="--columns:${cols}" aria-label="Collections">
+        ${collections.map((c, i) => collectionCard(c, i, editing)).join("")}
+        ${editing ? `<a class="add-grid" href="${editorPath("new")}" aria-label="Add a grid"><b>+</b><span>Add a grid</span></a>` : ""}
+      </section>`;
+  }
+
+  const ungrouped = collections.filter(
+    (c) => !c.groupId || !groups.some((g) => g.id === c.groupId),
+  );
+  let html = "";
+  if (ungrouped.length > 0) {
+    html += `
+      <div class="group-section" data-group-section="ungrouped">
+        <section class="collections ungrouped-collections" style="--columns:${cols}" data-group-id="" aria-label="Ungrouped collections">
+          ${ungrouped.map((c) => collectionCard(c, collections.indexOf(c), editing)).join("")}
+        </section>
+      </div>`;
+  }
+
+  for (const group of groups) {
+    const groupItems = collections.filter((c) => c.groupId === group.id);
+    html += `
+      <div class="group-section" data-group-section="${esc(group.id)}">
+        <div class="group-divider ${editing ? "editable" : ""}">
+          <div class="group-divider-line"></div>
+          ${
+            editing
+              ? `
+            <div class="group-title-wrap">
+              <input class="group-title-input" data-group-title="${esc(group.id)}" value="${esc(group.title)}" placeholder="Group name" aria-label="Group name" maxlength="60">
+              <button type="button" class="delete-group-btn" data-delete-group="${esc(group.id)}" aria-label="Delete group">×</button>
+            </div>`
+              : `<span class="group-divider-title">${esc(group.title)}</span>`
+          }
+          <div class="group-divider-line"></div>
+        </div>
+        <section class="collections group-collections" style="--columns:${cols}" data-group-id="${esc(group.id)}" aria-label="${esc(group.title)} collections">
+          ${groupItems.map((c) => collectionCard(c, collections.indexOf(c), editing)).join("")}
+          ${editing && groupItems.length === 0 ? `<div class="empty-group-target" data-group-drop="${esc(group.id)}">Drop 3×3s here</div>` : ""}
+        </section>
+      </div>`;
+  }
+
+  if (editing) {
+    html += `
+      <div class="edit-profile-bottom">
+        <a class="add-grid" href="${editorPath("new")}" aria-label="Add a grid"><b>+</b><span>Add a grid</span></a>
+      </div>`;
+  }
+  return html;
+}
+function refreshCollections() {
+  const container = document.querySelector("#collections-view");
+  if (!container) return render();
+  container.innerHTML = renderCollectionsView(true);
+  const countSpan = document.querySelector("#collection-count");
+  if (countSpan && profileDraft) {
+    countSpan.textContent = `Collections / ${String(profileDraft.collections.length).padStart(2, "0")} · Drag to reorder; save profile to keep changes.`;
+  }
+}
 function renderProfile(editing) {
   document.title = state.name + " — 3x3site";
+  if (editing && profileDraft) {
+    profileDraft.groups =
+      profileDraft.groups || structuredClone(state.groups || []);
+  }
+  const profile = editing ? profileDraft : state;
+  const cols = profile?.columns || 2;
+  const colCount = profile?.collections?.length || 0;
   app.innerHTML = `
     ${
       editing
@@ -218,20 +303,22 @@ function renderProfile(editing) {
       }
     </section>
     <div class="collection-bar">
-      <span>Collections / ${String(state.collections.length).padStart(2, "0")}${editing ? " · Drag to reorder; save profile to keep changes." : ""}</span>
-      <label>Per row <select id="columns" aria-label="Collections per row">
-        ${[2, 3, 4].map((n) => `<option value="${n}" ${n === (state.columns || 2) ? "selected" : ""}>${n}</option>`).join("")}
-      </select></label>
+      <span id="collection-count">Collections / ${String(colCount).padStart(2, "0")}${editing ? " · Drag to reorder; save profile to keep changes." : ""}</span>
+      <div class="collection-bar-actions">
+        ${editing ? `<button type="button" id="add-group-button" class="add-group-btn">+ Add group line</button>` : ""}
+        <label>Per row <select id="columns" aria-label="Collections per row">
+          ${[2, 3, 4].map((n) => `<option value="${n}" ${n === cols ? "selected" : ""}>${n}</option>`).join("")}
+        </select></label>
+      </div>
     </div>
-    <section class="collections" style="--columns:${state.columns || 2}" aria-label="Collections">
-      ${state.collections.map((c, i) => collectionCard(c, i, editing)).join("")}
-      ${editing ? `<a class="add-grid" href="${editorPath("new")}" aria-label="Add a grid"><b>+</b><span>Add a grid</span></a>` : ""}
-    </section>`;
+    <div id="collections-view">
+      ${renderCollectionsView(editing)}
+    </div>`;
   document.querySelector("#columns").onchange = async (event) => {
     const columns = +event.target.value;
     document
-      .querySelector(".collections")
-      .style.setProperty("--columns", columns);
+      .querySelectorAll(".collections")
+      .forEach((el) => el.style.setProperty("--columns", columns));
     if (viewedUserId !== currentAccount?.id) return;
     if (editing) {
       profileDraft.columns = columns;
@@ -260,6 +347,29 @@ function renderProfile(editing) {
       dirty = true;
     };
     document.querySelector(".profile-save").onclick = saveProfile;
+    const addGroupBtn = document.querySelector("#add-group-button");
+    if (addGroupBtn) {
+      addGroupBtn.onclick = () => {
+        if (!profileDraft.groups) profileDraft.groups = [];
+        const newGroup = {
+          id: crypto.randomUUID(),
+          title: "New Group",
+        };
+        profileDraft.groups.push(newGroup);
+        dirty = true;
+        refreshCollections();
+        notify(
+          "Group line added. Drag 3×3s under it, and save profile to keep changes.",
+        );
+        const input = document.querySelector(
+          `[data-group-title="${newGroup.id}"]`,
+        );
+        if (input) {
+          input.focus();
+          input.select();
+        }
+      };
+    }
   }
 }
 
@@ -274,6 +384,7 @@ async function saveProfile() {
       bio: profileDraft.bio,
       avatar: profileDraft.avatar,
       collections: profileDraft.collections,
+      groups: profileDraft.groups || [],
     });
     profileDraft = structuredClone(state);
     renderAccountNav();
@@ -297,6 +408,7 @@ function renderEditor(id) {
       title: "",
       shape: "square",
       borders: true,
+      groupId: null,
       slots: Array(9).fill(null),
     },
   );
@@ -314,6 +426,15 @@ function renderEditor(id) {
           <option value="landscape">Landscape · 1090:570</option>
         </select></label>
         <label><input type="checkbox" id="borders" ${draft.borders !== false ? "checked" : ""}> Grid borders</label>
+        ${
+          state.groups && state.groups.length > 0
+            ? `
+          <label>Group <select id="grid-group">
+            <option value="">(None)</option>
+            ${state.groups.map((g) => `<option value="${esc(g.id)}" ${draft.groupId === g.id ? "selected" : ""}>${esc(g.title)}</option>`).join("")}
+          </select></label>`
+            : ""
+        }
       </div>
       <div id="editable-grid">${gridMarkup(draft, "editor")}</div>
       <p class="hint">Drag anywhere on a tile to reorder. Focus a tile and use arrow keys to move it.</p>
@@ -339,6 +460,13 @@ function renderEditor(id) {
     dirty = true;
     refreshGrid();
   };
+  const groupSelect = document.querySelector("#grid-group");
+  if (groupSelect) {
+    groupSelect.onchange = (e) => {
+      draft.groupId = e.target.value || null;
+      dirty = true;
+    };
+  }
   bindSlots();
   document.querySelector("#save-grid").onclick = async () => {
     if (!draft.title.trim()) {
@@ -722,23 +850,55 @@ function reorderItems(kind, from, to) {
     dirty = true;
     refreshGrid();
     reorderPeers(kind)[to]?.focus();
+    notify("Moved to position " + (to + 1) + ". Save to keep changes.");
   } else {
-    if (!profileDraft || !moveEntry(profileDraft.collections, from, to)) return;
-    const cards = reorderPeers(kind),
-      parent = cards[from].parentElement;
-    parent.insertBefore(
-      cards[from],
-      from < to ? cards[to].nextSibling : cards[to],
-    );
-    reorderPeers(kind).forEach((card, i) => {
-      const size = gridSize(profileDraft.collections[i]);
-      card.querySelector(".collection-caption span").textContent =
-        String(i + 1).padStart(2, "0") + " / " + size.columns + "×" + size.rows;
-    });
+    if (!profileDraft) return;
+    const peers = reorderPeers(kind);
+    const fromCard = peers[from];
+    const toCard = peers[to];
+    if (!fromCard || !toCard) return;
+
+    const fromId = fromCard.dataset.collectionId;
+    const toId = toCard.dataset.collectionId;
+    const fromIdx = profileDraft.collections.findIndex((c) => c.id === fromId);
+    let toIdx = profileDraft.collections.findIndex((c) => c.id === toId);
+    if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx) return;
+
+    const targetGroupId = toCard.dataset.groupId || null;
+    const [coll] = profileDraft.collections.splice(fromIdx, 1);
+    if (targetGroupId) coll.groupId = targetGroupId;
+    else delete coll.groupId;
+
+    toIdx = profileDraft.collections.findIndex((c) => c.id === toId);
+    const insertPos = fromIdx < toIdx ? toIdx + 1 : toIdx;
+    profileDraft.collections.splice(insertPos, 0, coll);
+
     dirty = true;
-    cards[from].focus();
+    refreshCollections();
+    const newPeers = reorderPeers(kind);
+    const newIdx = newPeers.findIndex(
+      (el) => el.dataset.collectionId === fromId,
+    );
+    if (newIdx >= 0) newPeers[newIdx].focus();
+    notify("Moved grid. Save profile to keep changes.");
   }
-  notify("Moved to position " + (to + 1) + ". Save to keep changes.");
+}
+function dropIntoEmptyGroup(fromPeerIndex, targetGroupId) {
+  if (!profileDraft) return;
+  const peers = reorderPeers("collection");
+  const card = peers[fromPeerIndex];
+  if (!card) return;
+  const collId = card.dataset.collectionId;
+  const collIdx = profileDraft.collections.findIndex((c) => c.id === collId);
+  if (collIdx < 0) return;
+
+  const [coll] = profileDraft.collections.splice(collIdx, 1);
+  coll.groupId = targetGroupId;
+  profileDraft.collections.push(coll);
+
+  dirty = true;
+  refreshCollections();
+  notify("Moved grid to group. Save profile to keep changes.");
 }
 let reorderDrag = null,
   suppressReorderClick = false;
@@ -781,6 +941,9 @@ function clearDragPreview(d) {
     item.style.transform = "";
     item.classList.remove("drag-source", "drop-target");
   });
+  document.querySelectorAll(".empty-group-target").forEach((t) => {
+    t.classList.remove("drag-over");
+  });
 }
 function finishReorder(commit) {
   const d = reorderDrag;
@@ -793,13 +956,22 @@ function finishReorder(commit) {
   if (d.active) {
     suppressReorderClick = true;
     setTimeout(() => (suppressReorderClick = false), 0);
-    if (commit && d.to !== null) reorderItems(d.kind, d.from, d.to);
+    if (commit) {
+      if (d.kind === "collection" && d.emptyGroupTarget) {
+        dropIntoEmptyGroup(d.from, d.emptyGroupTarget);
+      } else if (d.to !== null) {
+        reorderItems(d.kind, d.from, d.to);
+      }
+    }
   }
 }
 app.addEventListener("pointerdown", (event) => {
   if (event.button !== 0 || dialog.open) return;
   const item = event.target.closest("[data-reorder]");
-  if (!item || event.target.closest(".description-box,input,textarea,select"))
+  if (
+    !item ||
+    event.target.closest(".description-box,input,textarea,select,button")
+  )
     return;
   const kind = item.dataset.reorder,
     peers = reorderPeers(kind);
@@ -809,6 +981,7 @@ app.addEventListener("pointerdown", (event) => {
     peers,
     from: peers.indexOf(item),
     to: null,
+    emptyGroupTarget: null,
     x: event.clientX,
     y: event.clientY,
     pointerId: event.pointerId,
@@ -831,6 +1004,15 @@ app.addEventListener("pointermove", (event) => {
   }
   event.preventDefault();
   const scrollDelta = window.scrollY - d.scrollY;
+
+  // Check if hovering over an empty group target
+  const el = document.elementFromPoint(event.clientX, event.clientY);
+  const emptyTarget = el?.closest("[data-group-drop]");
+  document.querySelectorAll(".empty-group-target").forEach((t) => {
+    t.classList.toggle("drag-over", t === emptyTarget);
+  });
+  d.emptyGroupTarget = emptyTarget ? emptyTarget.dataset.groupDrop : null;
+
   d.to = insertionIndex(d.rects, event.clientX, event.clientY + scrollDelta);
   const order = d.peers.map((_, i) => i);
   if (d.to !== null) moveEntry(order, d.from, d.to);
@@ -887,8 +1069,7 @@ app.addEventListener("keydown", (event) => {
   const columns =
     kind === "image"
       ? gridSize(draft).columns
-      : getComputedStyle(item.parentElement).gridTemplateColumns.split(" ")
-          .length;
+      : (profileDraft || state).columns || 2;
   const delta = {
     ArrowLeft: -1,
     ArrowRight: 1,
@@ -899,5 +1080,60 @@ app.addEventListener("keydown", (event) => {
     event.preventDefault();
     const to = from + delta;
     if (to >= 0 && to < peers.length) reorderItems(kind, from, to);
+  }
+});
+
+document.addEventListener("click", (e) => {
+  const deleteGridBtn = e.target.closest("[data-delete-grid]");
+  if (deleteGridBtn) {
+    e.preventDefault();
+    e.stopPropagation();
+    const id = deleteGridBtn.dataset.deleteGrid;
+    const coll = profileDraft?.collections?.find((c) => c.id === id);
+    if (!coll) return;
+    if (!confirm(`Delete "${coll.title || "this grid"}"?`)) return;
+    profileDraft.collections = profileDraft.collections.filter(
+      (c) => c.id !== id,
+    );
+    dirty = true;
+    refreshCollections();
+    notify("Grid deleted. Save profile to keep changes.");
+    return;
+  }
+  const deleteGroupBtn = e.target.closest("[data-delete-group]");
+  if (deleteGroupBtn) {
+    e.preventDefault();
+    e.stopPropagation();
+    const groupId = deleteGroupBtn.dataset.deleteGroup;
+    const group = profileDraft?.groups?.find((g) => g.id === groupId);
+    if (!group) return;
+    if (
+      !confirm(
+        `Delete group "${group.title || "Untitled"}"? Grids in this group will remain.`,
+      )
+    )
+      return;
+    profileDraft.groups = (profileDraft.groups || []).filter(
+      (g) => g.id !== groupId,
+    );
+    profileDraft.collections.forEach((c) => {
+      if (c.groupId === groupId) delete c.groupId;
+    });
+    dirty = true;
+    refreshCollections();
+    notify("Group removed. Save profile to keep changes.");
+    return;
+  }
+});
+
+document.addEventListener("input", (e) => {
+  const groupTitleInput = e.target.closest("[data-group-title]");
+  if (groupTitleInput) {
+    const groupId = groupTitleInput.dataset.groupTitle;
+    const group = profileDraft?.groups?.find((g) => g.id === groupId);
+    if (group) {
+      group.title = groupTitleInput.value;
+      dirty = true;
+    }
   }
 });
