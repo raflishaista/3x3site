@@ -232,7 +232,7 @@ test("renderCollectionsView in editing mode renders group title input and delete
   assert.match(html, /data-delete-group="g1"/);
 });
 
-test("renderLanding renders minimal landing page with title, horizontal subtitles, and REGISTER button", () => {
+test("renderLanding renders minimal landing page with title, vertical subtitles, and REGISTER button", () => {
   run("app.innerHTML = ''; document.title = '';");
   run("renderLanding()");
   const html = run("app.innerHTML");

@@ -375,26 +375,18 @@ button:has(.spinner),
 }
 .landing-subtitles {
   display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  justify-content: center;
-  align-items: stretch;
-  gap: 24px;
-  margin: 12px 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  margin: 8px 0;
   width: 100%;
 }
 .landing-subtitle-item {
-  flex: 1 1 200px;
-  max-width: 220px;
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.5;
   color: #aaa;
-  border-top: 1px solid #333;
-  padding-top: 16px;
   text-align: center;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  max-width: 680px;
 }
 .landing-example-link {
   color: #eee;
