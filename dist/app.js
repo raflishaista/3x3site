@@ -154,6 +154,7 @@ async function render() {
   }
   if (route.stale) return;
   if ("auth" in route) return renderAccountForm(route.auth);
+  if (route.landing) return renderLanding();
   const home = currentAccount ? profilePath(ownProfile) : "/";
   document.querySelector("#home-link").href = home;
   document.querySelector("#edit-link").href = currentAccount
@@ -170,6 +171,34 @@ async function render() {
   dirty = false;
   profileDraft = structuredClone(state);
   renderProfile(route.editing);
+}
+function renderLanding() {
+  document.title = "3x3site — a personal index";
+  draft = null;
+  dirty = false;
+  app.innerHTML = `
+    <section class="landing-page" aria-label="Welcome to 3x3site">
+      <div class="landing-hero">
+        <h1 class="landing-title">3<span>×</span>3site</h1>
+        <div class="landing-subtitles">
+          <div class="landing-subtitle-item">
+            Make your own page full of 3x3s of various things you like
+          </div>
+          <div class="landing-subtitle-item">
+            Upload your own images and edit your own page
+          </div>
+          <div class="landing-subtitle-item">
+            Your own sharable page by URL and downloadable pages/grids
+          </div>
+          <div class="landing-subtitle-item">
+            <a href="/fhgeh" class="landing-example-link">Example profile</a>
+          </div>
+        </div>
+        <div class="landing-cta">
+          <a href="/register" class="landing-register-btn">REGISTER</a>
+        </div>
+      </div>
+    </section>`;
 }
 function collectionCard(collection, index, editing) {
   const { columns, rows } = gridSize(collection);
@@ -375,6 +404,13 @@ function renderProfile(editing) {
 
 async function saveProfile() {
   if (!profileDraft.name.trim()) return notify("Enter a username.");
+  const saveBtn = document.querySelector(".profile-save");
+  const originalText = saveBtn ? saveBtn.innerHTML : "";
+  if (saveBtn) {
+    saveBtn.disabled = true;
+    saveBtn.innerHTML =
+      '<span class="spinner" aria-hidden="true"></span> Saving...';
+  }
   try {
     await persist({
       ...state,
@@ -393,6 +429,10 @@ async function saveProfile() {
     notify("Profile saved.");
   } catch (error) {
     notify("Could not save: " + error.message);
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = originalText;
+    }
   }
 }
 function renderEditor(id) {
@@ -492,6 +532,13 @@ function renderEditor(id) {
       )
         return;
     }
+    const saveBtn = document.querySelector("#save-grid");
+    const originalText = saveBtn ? saveBtn.innerHTML : "";
+    if (saveBtn) {
+      saveBtn.disabled = true;
+      saveBtn.innerHTML =
+        '<span class="spinner" aria-hidden="true"></span> Saving...';
+    }
     const next = structuredClone(state);
     draft.slots = gridSlots(draft);
     draft.title = draft.title.trim();
@@ -506,6 +553,10 @@ function renderEditor(id) {
     } catch (error) {
       document.querySelector(".save-error").textContent =
         "Could not save: " + error.message + ". Your edits are still here.";
+      if (saveBtn) {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = originalText;
+      }
     }
   };
 }

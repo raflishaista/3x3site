@@ -316,6 +316,118 @@ main {
   padding: 20px 0 60px;
   width: 100%;
 }
+/* Spinner for saving state */
+.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spinner-spin 0.75s linear infinite;
+  vertical-align: -2px;
+  margin-right: 8px;
+}
+@keyframes spinner-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+button:has(.spinner),
+.primary:has(.spinner) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Landing page */
+.landing-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 200px);
+  text-align: center;
+  padding: 40px 16px 60px;
+}
+.landing-hero {
+  max-width: 980px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 36px;
+}
+.landing-title {
+  font-size: clamp(48px, 10vw, 92px);
+  font-weight: 900;
+  letter-spacing: -4px;
+  line-height: 1;
+  margin: 0;
+  color: #fff;
+}
+.landing-title span {
+  color: var(--accent);
+  padding: 0 4px;
+}
+.landing-subtitles {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: stretch;
+  gap: 24px;
+  margin: 12px 0;
+  width: 100%;
+}
+.landing-subtitle-item {
+  flex: 1 1 200px;
+  max-width: 220px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #aaa;
+  border-top: 1px solid #333;
+  padding-top: 16px;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.landing-example-link {
+  color: #eee;
+  text-decoration: underline;
+  text-underline-offset: 5px;
+  font-weight: bold;
+  transition: color 0.15s ease;
+}
+.landing-example-link:hover {
+  color: #fff;
+  text-decoration-color: var(--accent);
+}
+.landing-cta {
+  margin-top: 16px;
+}
+.landing-register-btn {
+  display: inline-block;
+  background: transparent;
+  color: #fff;
+  border: 1px solid var(--accent);
+  padding: 13px 40px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  border-radius: 0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.landing-register-btn:hover {
+  background: var(--accent);
+  color: #080808;
+}
 .grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

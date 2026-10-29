@@ -59,7 +59,7 @@ async function resolveRoute() {
   if (!parts.length) {
     state = structuredClone(initial);
     viewedUserId = null;
-    return { editing: false };
+    return { editing: false, landing: !currentAccount };
   }
   const handle = parts[0].toLowerCase();
   const editing = parts[1] === "edit";

@@ -231,3 +231,28 @@ test("renderCollectionsView in editing mode renders group title input and delete
   assert.match(html, /class="delete-group-btn"/);
   assert.match(html, /data-delete-group="g1"/);
 });
+
+test("renderLanding renders minimal landing page with title, horizontal subtitles, and REGISTER button", () => {
+  run("app.innerHTML = ''; document.title = '';");
+  run("renderLanding()");
+  const html = run("app.innerHTML");
+  assert.match(html, /class="landing-page"/);
+  assert.match(html, /class="landing-title">3<span>×<\/span>3site<\/h1>/);
+  assert.match(
+    html,
+    /Make your own page full of 3x3s of various things you like/,
+  );
+  assert.match(html, /Upload your own images and edit your own page/);
+  assert.match(
+    html,
+    /Your own sharable page by URL and downloadable pages\/grids/,
+  );
+  assert.match(
+    html,
+    /<a href="\/fhgeh" class="landing-example-link">Example profile<\/a>/,
+  );
+  assert.match(
+    html,
+    /<a href="\/register" class="landing-register-btn">REGISTER<\/a>/,
+  );
+});
