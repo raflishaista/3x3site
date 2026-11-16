@@ -74,6 +74,29 @@ function exportLoader() {
     return cache.get(src);
   };
 }
+function paintExportSlotName(ctx, text, x, y, w, h) {
+  const fontSize = Math.max(12, Math.min(24, Math.round(w * 0.075)));
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(x, y, w, h);
+  ctx.clip();
+  ctx.font = `bold ${fontSize}px Arial, Helvetica, sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "bottom";
+  const paddingX = 8;
+  const marginBottom = Math.max(6, Math.round(h * 0.03));
+  const lines = exportLines(ctx, text, w - paddingX * 2);
+  const lineHeight = fontSize * 1.15;
+  ctx.lineWidth = Math.max(1, Math.round(fontSize * 0.07));
+  ctx.strokeStyle = "#000";
+  ctx.fillStyle = "#fff";
+  lines.forEach((line, idx) => {
+    const ly = y + h - marginBottom - (lines.length - 1 - idx) * lineHeight;
+    ctx.strokeText(line, x + w / 2, ly);
+    ctx.fillText(line, x + w / 2, ly);
+  });
+  ctx.restore();
+}
 async function paintExportGrid(ctx, collection, x, y, width, height, load) {
   const border = collection.borders === false ? 0 : Math.max(1.5, width / 300);
   ctx.fillStyle = border ? "#eee" : "#101010";
@@ -99,6 +122,11 @@ async function paintExportGrid(ctx, collection, x, y, width, height, load) {
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(String(i + 1).padStart(2, "0"), tx + w / 2, ty + h / 2);
+    }
+    const slot = collection.slots[i];
+    const slotName = slot?.name?.trim();
+    if (slotName) {
+      paintExportSlotName(ctx, slotName, tx, ty, w, h);
     }
   }
 }
@@ -157,19 +185,42 @@ async function exportProfile(profile) {
 
   measure.font = "bold 28px Arial";
   const groups = profile.groups || [];
+  const collections = profile.collections || [];
   const sections = [];
   if (!groups.length) {
-    sections.push({ title: "", items: profile.collections || [] });
+    sections.push({ title: "", items: collections });
   } else {
-    const ungrouped = (profile.collections || []).filter(
+    let order =
+      Array.isArray(profile.sectionOrder) && profile.sectionOrder.length
+        ? [...profile.sectionOrder]
+        : [];
+    order = order.filter(
+      (id) => id === "ungrouped" || groups.some((g) => g.id === id),
+    );
+    for (const g of groups) {
+      if (!order.includes(g.id)) order.push(g.id);
+    }
+    const hasUngrouped = collections.some(
       (c) => !c.groupId || !groups.some((g) => g.id === c.groupId),
     );
-    if (ungrouped.length) sections.push({ title: "", items: ungrouped });
-    for (const g of groups) {
-      sections.push({
-        title: g.title,
-        items: (profile.collections || []).filter((c) => c.groupId === g.id),
-      });
+    if (!order.includes("ungrouped") && hasUngrouped) {
+      order.unshift("ungrouped");
+    }
+    for (const id of order) {
+      if (id === "ungrouped") {
+        const ungrouped = collections.filter(
+          (c) => !c.groupId || !groups.some((g) => g.id === c.groupId),
+        );
+        if (ungrouped.length) sections.push({ title: "", items: ungrouped });
+      } else {
+        const g = groups.find((grp) => grp.id === id);
+        if (g) {
+          sections.push({
+            title: g.title,
+            items: collections.filter((c) => c.groupId === g.id),
+          });
+        }
+      }
     }
   }
 

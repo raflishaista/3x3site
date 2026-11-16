@@ -27,18 +27,21 @@ function resizeGrid(collection, columns, rows) {
 }
 function infoSections(slot) {
   if (Array.isArray(slot?.sections)) return slot.sections;
-  return [{ title: "Info", text: slot?.info || "" }];
+  return [{ title: "", text: slot?.info || "" }];
 }
 function infoMarkup(slot) {
   return infoSections(slot)
-    .map(
-      (section) => `
+    .map((section) => {
+      const title = section.title && section.title.trim();
+      const text = section.text || "";
+      if (!title && !text.trim()) return "";
+      return `
     <section class="info-section">
-      <h3>${esc(section.title || "Info")}</h3>
-      <div>${esc(section.text || "")}</div>
+      ${title ? `<h3>${esc(title)}</h3>` : ""}
+      <div>${esc(text)}</div>
     </section>
-  `,
-    )
+  `;
+    })
     .join("");
 }
 function avatarSource(profile) {

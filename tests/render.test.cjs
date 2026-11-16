@@ -9,10 +9,12 @@ const context = vm.createContext({
   setTimeout,
   clearTimeout,
   document: {
-    querySelector: () => ({ addEventListener: () => {} }),
+    querySelector: () => ({ addEventListener: () => {}, style: {} }),
     addEventListener: () => {},
   },
   window: { addEventListener: () => {} },
+  innerWidth: 1024,
+  innerHeight: 768,
   editorPath: (id) => "/collection/" + id,
 });
 const source = fs
@@ -249,10 +251,237 @@ test("renderLanding renders minimal landing page with title, vertical subtitles,
   );
   assert.match(
     html,
-    /<a href="\/fhgeh" class="landing-example-link">Example profile<\/a>/,
+    /<a href="\/eeyow" class="landing-example-link">Example profile<\/a>/,
   );
   assert.match(
     html,
     /<a href="\/register" class="landing-register-btn">REGISTER<\/a>/,
   );
+});
+
+test("an empty group renders its divider line and title in public mode", () => {
+  run(`state = {
+    collections: [],
+    groups: [{ id: 'g_empty', title: 'Upcoming Grids' }]
+  }`);
+  const html = run("renderCollectionsView(false)");
+  assert.match(
+    html,
+    /<span class="group-divider-title">Upcoming Grids<\/span>/,
+  );
+});
+
+test("group divider in editing mode has data-reorder group, drag handle, and data-group-id", () => {
+  run(`profileDraft = {
+    collections: [],
+    groups: [{ id: 'g1', title: 'Anime' }]
+  }`);
+  const html = run("renderCollectionsView(true)");
+  assert.match(html, /data-reorder="group"/);
+  assert.match(html, /data-group-id="g1"/);
+  assert.match(html, /class="group-drag-handle"/);
+});
+
+test("groups can be rendered on the first line of the page before ungrouped", () => {
+  run(`state = {
+    collections: [
+      { id: 'c1', title: 'Top Movie', groupId: 'g1', slots: [] },
+      { id: 'c2', title: 'Random Stuff', slots: [] }
+    ],
+    groups: [{ id: 'g1', title: 'Cinema' }],
+    sectionOrder: ['g1', 'ungrouped']
+  }`);
+  const html = run("renderCollectionsView(false)");
+  const cinemaIndex = html.indexOf("Cinema");
+  const randomStuffIndex = html.indexOf("Random Stuff");
+  assert.ok(cinemaIndex >= 0 && randomStuffIndex >= 0);
+  assert.ok(
+    cinemaIndex < randomStuffIndex,
+    "Group should appear before ungrouped",
+  );
+});
+
+test("collection card in a group renders ungroup button in editing mode", () => {
+  run(`profileDraft = {
+    collections: [{ id: 'c1', title: 'Top Movie', groupId: 'g1', slots: [] }],
+    groups: [{ id: 'g1', title: 'Cinema' }]
+  }`);
+  const html = run("renderCollectionsView(true)");
+  assert.match(html, /class="ungroup-grid-btn"/);
+  assert.match(html, /data-ungroup-grid="c1"/);
+});
+
+test("reorderItems with group reorders sectionOrder", () => {
+  run(`profileDraft = {
+    collections: [],
+    groups: [
+      { id: 'g1', title: 'First' },
+      { id: 'g2', title: 'Second' }
+    ],
+    sectionOrder: ['g1', 'g2', 'ungrouped']
+  }`);
+  run(`
+    mockPeer1 = { dataset: { groupId: 'g1' }, focus: () => {} };
+    mockPeer2 = { dataset: { groupId: 'g2' }, focus: () => {} };
+    savedReorderPeers = reorderPeers;
+    reorderPeers = (k) => k === 'group' ? [mockPeer1, mockPeer2] : savedReorderPeers(k);
+    reorderItems('group', 0, 1);
+    reorderPeers = savedReorderPeers;
+  `);
+  const order = run("profileDraft.sectionOrder");
+  assert.equal(order[0], "g2");
+  assert.equal(order[1], "g1");
+});
+
+test("dropIntoEmptyGroup moves grid into empty group or out of group", () => {
+  run(`profileDraft = {
+    collections: [{ id: 'c1', title: 'Solo Grid', groupId: 'g1', slots: [] }],
+    groups: [{ id: 'g1', title: 'Cinema' }, { id: 'g2', title: 'Books' }]
+  }`);
+  run(`
+    mockCard = { dataset: { collectionId: 'c1' } };
+    savedReorderPeers = reorderPeers;
+    reorderPeers = (k) => k === 'collection' ? [mockCard] : savedReorderPeers(k);
+    dropIntoEmptyGroup(0, 'g2');
+    reorderPeers = savedReorderPeers;
+  `);
+  assert.strictEqual(run("profileDraft.collections[0].groupId"), "g2");
+
+  run(`
+    mockCard = { dataset: { collectionId: 'c1' } };
+    savedReorderPeers = reorderPeers;
+    reorderPeers = (k) => k === 'collection' ? [mockCard] : savedReorderPeers(k);
+    dropIntoEmptyGroup(0, '');
+    reorderPeers = savedReorderPeers;
+  `);
+  assert.strictEqual(run("profileDraft.collections[0].groupId"), undefined);
+});
+
+test("dragging a collection does not translate target peers to origin coordinates", () => {
+  run(`
+    cardA = { style: {}, classList: { add: () => {}, remove: () => {}, toggle: (cls, on) => { cardA[cls] = on; } } };
+    cardB = { style: {}, classList: { add: () => {}, remove: () => {}, toggle: (cls, on) => { cardB[cls] = on; } } };
+    reorderDrag = {
+      kind: 'collection',
+      item: cardA,
+      peers: [cardA, cardB],
+      rects: [{ top: 100, bottom: 200, left: 0, right: 100 }, { top: 500, bottom: 600, left: 0, right: 100 }],
+      from: 0,
+      to: null,
+      x: 50,
+      y: 150,
+      pointerId: 1,
+      active: true,
+      scrollY: 0
+    };
+    document.querySelectorAll = () => [];
+    document.elementFromPoint = () => ({ closest: (sel) => sel.includes('.collection') ? cardB : null });
+  `);
+  run(`
+    if (reorderDrag && reorderDrag.kind === 'collection') {
+      reorderDrag.item.style.transform = 'translate(0px, 400px)';
+      const el = document.elementFromPoint(50, 550);
+      const targetCard = el?.closest('.collection:not(.drag-source)');
+      if (targetCard) {
+        reorderDrag.to = reorderDrag.peers.indexOf(targetCard);
+      }
+      reorderDrag.peers.forEach((p, idx) => {
+        p.classList.toggle('drop-target', idx === reorderDrag.to && idx !== reorderDrag.from);
+      });
+    }
+  `);
+  assert.equal(run("cardB.style.transform"), undefined);
+  assert.equal(run("cardB['drop-target']"), true);
+});
+
+test("renderProfile in editing mode displays Page Name label and placeholder", () => {
+  run(
+    `state = { name: 'My Profile', bio: 'Hello', username: 'testuser', collections: [], groups: [] };`,
+  );
+  run("profileDraft = structuredClone(state);");
+  run("renderProfile(true);");
+  const html = run("app.innerHTML");
+  assert.match(html, /<label class="name-label">Page Name/);
+  assert.match(html, /placeholder="Page Name"/);
+  assert.match(html, /class="name-input"/);
+});
+
+test("infoMarkup with empty title does not display h3 and only displays description", () => {
+  const html = run(
+    "infoMarkup({sections:[{title:'',text:'Only description here'}]})",
+  );
+  assert.doesNotMatch(html, /<h3>/);
+  assert.match(html, /<div>Only description here<\/div>/);
+  const titled = run(
+    "infoMarkup({sections:[{title:'Director',text:'Christopher Nolan'}]})",
+  );
+  assert.match(titled, /<h3>Director<\/h3>/);
+  assert.match(titled, /<div>Christopher Nolan<\/div>/);
+});
+
+test("tiles renders image overlay name when slot name is set", () => {
+  const homeHtml = run(
+    "tiles({id:'test',slots:[{source:'x.gif',name:'Fight Club'}]},'home')",
+  );
+  assert.match(homeHtml, /<div class="image-overlay-name">Fight Club<\/div>/);
+  const editorHtml = run(
+    "tiles({id:'test',slots:[{source:'x.gif',name:'The Matrix'}]},'editor')",
+  );
+  assert.match(editorHtml, /<div class="image-overlay-name">The Matrix<\/div>/);
+  const profileHtml = run(
+    "tiles({id:'test',slots:[{source:'x.gif',name:'Inception'}]},'profile')",
+  );
+  assert.match(profileHtml, /<div class="image-overlay-name">Inception<\/div>/);
+});
+
+test("openDescription renders Name input at top and optional title placeholder and hint", () => {
+  run(`
+    let createdForm = null;
+    const mockTile = {
+      getBoundingClientRect: () => ({ top: 0, bottom: 100, left: 0, right: 100 }),
+      classList: { contains: () => false, add: () => {}, remove: () => {}, toggle: () => {} },
+      style: {},
+      append: (child) => {}
+    };
+    document.querySelector = (sel) => ({
+      addEventListener: () => {},
+      style: {},
+      remove: () => {},
+      focus: () => {}
+    });
+    document.createElement = (tag) => {
+      const el = {
+        tag,
+        className: '',
+        innerHTML: '',
+        children: [],
+        style: {},
+        offsetWidth: 200,
+        offsetHeight: 100,
+        classList: { contains: () => false, add: () => {}, remove: () => {}, toggle: () => {} },
+        getBoundingClientRect: () => ({ top: 0, bottom: 100, left: 0, right: 100 }),
+        setAttribute: () => {},
+        querySelector: (sel) => {
+          if (sel === '.info-fields') return { append: (child) => el.children.push(child) };
+          if (sel === '.close-description' || sel === '.remove-info' || sel === '.add-info') return { onclick: null };
+          return { focus: () => {} };
+        },
+        querySelectorAll: () => [],
+        append: (child) => el.children.push(child),
+        closest: (sel) => (sel.includes('.tile') ? mockTile : null)
+      };
+      if (tag === 'form') createdForm = el;
+      return el;
+    };
+    draft = { id: 'grid1', gridColumns: 3, gridRows: 3, slots: [{ source: 'x.gif', name: 'Movie One' }] };
+    const btn = { dataset: { description: '0' }, closest: (sel) => mockTile, focus: () => {} };
+    openDescription(0, btn);
+  `);
+  const formHtml = run("createdForm.innerHTML");
+  assert.match(formHtml, /class="slot-name-label">Name/);
+  assert.match(formHtml, /name="name"/);
+  assert.match(formHtml, /value="Movie One"/);
+  const fieldHtml = run("createdForm.children[0]?.innerHTML || ''");
+  assert.match(fieldHtml, /placeholder="Title \(optional\)"/);
+  assert.match(fieldHtml, /class="optional-hint">\(optional\)<\/span>/);
 });

@@ -112,6 +112,12 @@ main {
   right: 1px;
   padding: 6px;
 }
+.name-label {
+  display: block;
+  margin: 16px 0 0;
+  font: 12px monospace;
+  color: #aaa;
+}
 .profile h1,
 .name-input {
   font-size: 34px;
@@ -119,6 +125,9 @@ main {
   letter-spacing: -1.2px;
   margin: 17px 0 9px;
   line-height: 1.2;
+}
+.name-label .name-input {
+  margin: 6px 0 9px;
 }
 .bio {
   font-size: 14px;
@@ -180,6 +189,15 @@ main {
   display: block;
   position: relative;
 }
+.card-edit-actions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  z-index: 10;
+}
 .delete-grid-btn {
   position: absolute;
   top: 8px;
@@ -200,10 +218,32 @@ main {
   padding: 0;
   transition: all 0.15s ease;
 }
+.card-edit-actions .delete-grid-btn {
+  position: static;
+}
 .delete-grid-btn:hover {
   border-color: #ff5555;
   color: #ff5555;
   background: #180a0a;
+}
+.ungroup-grid-btn {
+  height: 28px;
+  background: #080808;
+  border: 1px solid #777;
+  color: #ccc;
+  font: 11px monospace;
+  padding: 0 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 0;
+  transition: all 0.15s ease;
+}
+.ungroup-grid-btn:hover {
+  border-color: #fff;
+  color: #fff;
+  background: #222;
 }
 .group-section {
   width: 100%;
@@ -216,11 +256,51 @@ main {
   margin: 44px 0 24px;
   gap: 18px;
   position: relative;
+  transition: all 0.15s ease;
+}
+.group-divider.editable {
+  cursor: grab;
+  touch-action: none;
+}
+.group-divider.editable:active {
+  cursor: grabbing;
+}
+.group-divider.editable:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 4px;
+}
+.group-divider.drag-over .group-divider-line {
+  background: var(--accent);
+  height: 2px;
+}
+.group-divider.drag-over .group-divider-title {
+  color: var(--accent);
+}
+.group-drag-handle {
+  color: #777;
+  font-size: 16px;
+  cursor: grab;
+  padding: 0 4px;
+  user-select: none;
+  line-height: 1;
+}
+.group-divider.editable:hover .group-drag-handle {
+  color: #fff;
+}
+.ungrouped-divider .group-divider-line {
+  background: #444;
+}
+.ungrouped-title {
+  color: #888;
+  font-size: 13px;
+  letter-spacing: 1px;
+  font-family: monospace;
 }
 .group-divider-line {
   flex: 1;
   height: 1px;
   background: #fff;
+  transition: all 0.15s ease;
 }
 .group-divider-title {
   font-size: 18px;
@@ -284,7 +364,13 @@ main {
   justify-content: center;
   color: #666;
   font: 12px monospace;
+  text-align: center;
+  padding: 16px;
   transition: all 0.15s ease;
+}
+.empty-group-target.ungroup-drop-target {
+  border-style: dotted;
+  color: #888;
 }
 .empty-group-target.drag-over {
   border-color: var(--accent);
@@ -755,6 +841,7 @@ input[type="checkbox"] {
   height: 100%;
   overflow: hidden;
   background: #101010;
+  container-type: inline-size;
 }
 .image-window img {
   position: absolute;
@@ -764,6 +851,26 @@ input[type="checkbox"] {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+.image-overlay-name {
+  position: absolute;
+  bottom: 8px;
+  left: 6px;
+  right: 6px;
+  text-align: center;
+  pointer-events: none;
+  font-family: inherit;
+  letter-spacing: -0.3px;
+  color: #fff;
+  line-height: 1;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  white-space: pre-wrap;
+  paint-order: stroke fill;
+  -webkit-text-stroke: 1px #000;
+  font-size: clamp(12px, 2.5vw, 22px);
+  font-size: clamp(12px, 7.5cqi, 22px);
+  z-index: 2;
 }
 .slot-number {
   display: flex;
@@ -840,6 +947,10 @@ input[type="checkbox"] {
 .home-tile:focus-within .info-box {
   display: block;
 }
+.home-tile:hover .info-box:empty,
+.home-tile:focus-within .info-box:empty {
+  display: none;
+}
 .tile-actions {
   position: absolute;
   inset: 0;
@@ -915,6 +1026,19 @@ input[type="checkbox"] {
   display: block;
   font: 11px monospace;
   margin: 13px 0;
+}
+.slot-name-label {
+  margin: 10px 0 14px;
+}
+.optional-hint {
+  color: #888;
+  font-weight: normal;
+  font-size: 11px;
+  margin-left: 4px;
+}
+.description-box input::placeholder,
+.description-box textarea::placeholder {
+  color: #777;
 }
 .description-box textarea,
 .description-box input {

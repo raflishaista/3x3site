@@ -88,8 +88,6 @@ initializeAccounts = async function () {
       }, 0);
     }
   });
-  document.querySelector("#storage-note").textContent =
-    "Profiles saved to Supabase";
 };
 renderAccountNav = function () {
   let nav = document.querySelector("#account-nav");
