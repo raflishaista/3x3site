@@ -160,8 +160,6 @@ async function render() {
     return;
   }
   if (route.stale) return;
-  if ("auth" in route) return renderAccountForm(route.auth);
-  if (route.landing) return renderLanding();
   const home = currentAccount ? profilePath(ownProfile) : "/";
   document.querySelector("#home-link").href = home;
   document.querySelector("#edit-link").href = currentAccount
@@ -169,10 +167,18 @@ async function render() {
     : "/login";
   document
     .querySelector("#home-link")
-    .setAttribute("aria-current", route.editing ? "false" : "page");
+    .setAttribute(
+      "aria-current",
+      !route.landing && !("auth" in route) && !route.editing ? "page" : "false",
+    );
   document
     .querySelector("#edit-link")
-    .setAttribute("aria-current", route.editing ? "page" : "false");
+    .setAttribute(
+      "aria-current",
+      !route.landing && !("auth" in route) && route.editing ? "page" : "false",
+    );
+  if ("auth" in route) return renderAccountForm(route.auth);
+  if (route.landing) return renderLanding();
   if (route.collectionId) return renderEditor(route.collectionId);
   draft = null;
   dirty = false;

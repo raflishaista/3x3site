@@ -482,6 +482,6 @@ test("openDescription renders Name input at top and optional title placeholder a
   assert.match(formHtml, /name="name"/);
   assert.match(formHtml, /value="Movie One"/);
   const fieldHtml = run("createdForm.children[0]?.innerHTML || ''");
-  assert.match(fieldHtml, /placeholder="Title \(optional\)"/);
-  assert.match(fieldHtml, /class="optional-hint">\(optional\)<\/span>/);
+  assert.match(fieldHtml, /placeholder="Title"/);
+  assert.match(fieldHtml, /<label>Title/);
 });

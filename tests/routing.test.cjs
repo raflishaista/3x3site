@@ -54,3 +54,11 @@ test("legacy hash URLs become clean username URLs", async () => {
   assert.equal(location.pathname, "/alice/collection/books");
   assert.equal(location.hash, "");
 });
+test("/landing resolves to the landing page even when signed in, and wordmark links to /landing", async () => {
+  const { run } = router("/landing");
+  const route = await run("resolveRoute()");
+  assert.equal(route.landing, true);
+  assert.equal(route.editing, false);
+  const html = fs.readFileSync("dist/index.html", "utf8");
+  assert.match(html, /<a[^>]*class="wordmark"[^>]*href="\/landing"/);
+});

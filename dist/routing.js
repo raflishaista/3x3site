@@ -1,6 +1,7 @@
 const reservedNames = new Set([
   "login",
   "register",
+  "landing",
   "edit",
   "collection",
   "api",
@@ -51,6 +52,11 @@ async function resolveRoute() {
   let path = decodeURIComponent(location.pathname).replace(/\/$/, "") || "/";
   if (path === "/login" || path === "/register")
     return { auth: path === "/register" };
+  if (path === "/landing") {
+    state = structuredClone(initial);
+    viewedUserId = null;
+    return { editing: false, landing: true };
+  }
   if (path === "/" && currentAccount) {
     path = profilePath();
     history.replaceState({}, "", path);
