@@ -6,6 +6,7 @@ const initial = {
   bio: "Books, films, and everything in between.\nA few of my favorite things.",
   avatar: "",
   columns: 2,
+  links: [],
   groups: [],
   collections: [
     { id: "books", title: "Books", slots: Array(9).fill(null) },
@@ -373,11 +374,130 @@ function refreshCollections() {
     countSpan.textContent = `Collections / ${String(profileDraft.collections.length).padStart(2, "0")} · Drag to reorder. Save profile to keep changes.`;
   }
 }
+function profileLinksMarkup(links, editing = false) {
+  const items = Array.isArray(links) ? links : [];
+  if (editing) {
+    return (
+      items
+        .map(
+          (link, i) => `
+        <div class="profile-link-chip" data-link-index="${i}">
+          <button type="button" class="profile-link-edit" data-edit-link="${i}" aria-label="Edit link ${esc(link.name || "Link " + (i + 1))}">${esc(link.name || "Link")}</button>
+          <button type="button" class="profile-link-remove" data-remove-link="${i}" aria-label="Remove link ${esc(link.name || "Link " + (i + 1))}">×</button>
+        </div>`,
+        )
+        .join("") +
+      `<button type="button" class="profile-link-add" id="add-profile-link" aria-label="Add hyperlink">+</button>`
+    );
+  }
+  const valid = items
+    .map((link) => ({
+      name: String(link?.name || "").trim(),
+      href: safeLink(link?.url),
+    }))
+    .filter((link) => link.name && link.href);
+  if (!valid.length) return "";
+  return `<nav class="profile-links" aria-label="Profile links">${valid
+    .map(
+      (link) =>
+        `<a class="profile-link" href="${esc(link.href)}" target="_blank" rel="noopener noreferrer">${esc(link.name)}</a>`,
+    )
+    .join("")}</nav>`;
+}
+function refreshProfileLinks() {
+  const container = document.querySelector("#profile-links");
+  if (!container) return;
+  container.innerHTML = profileLinksMarkup(profileDraft.links, true);
+  bindProfileLinks();
+}
+function bindProfileLinks() {
+  document.querySelectorAll("[data-edit-link]").forEach((btn) => {
+    btn.onclick = () => openProfileLinkEditor(+btn.dataset.editLink, btn);
+  });
+  document.querySelectorAll("[data-remove-link]").forEach((btn) => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      const idx = +btn.dataset.removeLink;
+      if (!Array.isArray(profileDraft?.links)) return;
+      closeDescription();
+      profileDraft.links.splice(idx, 1);
+      dirty = true;
+      refreshProfileLinks();
+      notify("Link removed. Save profile to keep changes.");
+    };
+  });
+  const addBtn = document.querySelector("#add-profile-link");
+  if (addBtn) {
+    addBtn.onclick = () => openProfileLinkEditor(null, addBtn);
+  }
+}
+function openProfileLinkEditor(index, button) {
+  closeDescription();
+  const isNew = index === null || index === undefined;
+  const link = isNew
+    ? { name: "", url: "" }
+    : profileDraft.links?.[index] || {};
+  const panel = document.createElement("form");
+  panel.className = "speechbox description-box profile-link-box";
+  panel.setAttribute("aria-label", isNew ? "Add hyperlink" : "Edit hyperlink");
+  panel.innerHTML = `
+    <div class="description-head"><strong>${isNew ? "Add hyperlink" : "Edit hyperlink"}</strong><button type="button" class="close-description" aria-label="Close link editor">×</button></div>
+    <label>Name
+      <input name="name" aria-label="Link name" placeholder="e.g. YouTube" maxlength="40" value="${esc(link.name || "")}">
+    </label>
+    <label>Link
+      <input name="url" aria-label="Link URL" placeholder="https://" value="${esc(link.url || "")}">
+    </label>
+    <p class="description-error" role="alert"></p>
+    <button type="submit" class="primary">Save link</button>`;
+  const host =
+    button.closest(".profile-link-chip") ||
+    document.querySelector("#profile-links") ||
+    document.body;
+  host.append(panel);
+  panel.querySelector(".close-description").onclick = () => {
+    closeDescription();
+    button.focus();
+  };
+  panel.onkeydown = (e) => {
+    if (e.key === "Escape") {
+      e.stopPropagation();
+      closeDescription();
+      button.focus();
+    }
+  };
+  panel.onsubmit = (e) => {
+    e.preventDefault();
+    const name = panel.elements.name.value.trim();
+    const url = panel.elements.url.value.trim();
+    const err = panel.querySelector(".description-error");
+    if (!name) {
+      err.textContent = "Enter a name for the link.";
+      return;
+    }
+    const safe = safeLink(url);
+    if (!url || !safe) {
+      err.textContent = "Enter a full http:// or https:// link.";
+      return;
+    }
+    if (!profileDraft.links) profileDraft.links = [];
+    if (isNew) profileDraft.links.push({ name, url: safe });
+    else profileDraft.links[index] = { name, url: safe };
+    dirty = true;
+    closeDescription();
+    refreshProfileLinks();
+    notify("Link updated. Save profile to keep changes.");
+  };
+  panel.querySelector("input")?.focus();
+  positionSpeechbox(panel);
+}
 function renderProfile(editing) {
   document.title = state.name + " — 3x3site";
   if (editing && profileDraft) {
     profileDraft.groups =
       profileDraft.groups || structuredClone(state.groups || []);
+    profileDraft.links =
+      profileDraft.links || structuredClone(state.links || []);
   }
   const profile = editing ? profileDraft : state;
   const cols = profile?.columns || 2;
@@ -401,17 +521,19 @@ function renderProfile(editing) {
           <input class="username-input" maxlength="40" pattern="[a-z0-9_-]+" value="${esc(state.username || "")}">
         </label>
         <textarea class="bio-input" aria-label="Biography" maxlength="600">${esc(state.bio)}</textarea>
+        <div class="profile-links editing" id="profile-links">${profileLinksMarkup(profileDraft.links, true)}</div>
         <button class="profile-save">Save profile</button>
       `
           : `
         <div class="profile-photo">${avatarMarkup(state)}</div>
         <h1>${esc(state.name)}</h1>
         <p class="bio">${esc(state.bio)}</p>
+        ${profileLinksMarkup(state.links, false)}
       `
       }
     </section>
     <div class="collection-bar">
-      <span id="collection-count">Collections / ${String(colCount).padStart(2, "0")}${editing ? " · Drag to reorder; save profile to keep changes." : ""}</span>
+      <span id="collection-count">Collections / ${String(colCount).padStart(2, "0")}${editing ? " · Drag to reorder. Save profile to keep changes." : ""}</span>
       <div class="collection-bar-actions">
         ${editing ? `<button type="button" id="add-group-button" class="add-group-btn">+ Add group line</button>` : ""}
         <label>Per row <select id="columns" aria-label="Collections per row">
@@ -455,6 +577,7 @@ function renderProfile(editing) {
       dirty = true;
     };
     document.querySelector(".profile-save").onclick = saveProfile;
+    bindProfileLinks();
     const addGroupBtn = document.querySelector("#add-group-button");
     if (addGroupBtn) {
       addGroupBtn.onclick = () => {
@@ -516,6 +639,7 @@ async function saveProfile() {
       name: profileDraft.name.trim(),
       bio: profileDraft.bio,
       avatar: profileDraft.avatar,
+      links: profileDraft.links || [],
       collections: profileDraft.collections,
       groups: profileDraft.groups || [],
       sectionOrder: profileDraft.sectionOrder || [],
@@ -939,6 +1063,29 @@ window.addEventListener("hashchange", () => {
 });
 init();
 function positionSpeechbox(box) {
+  if (box.classList.contains("profile-link-box")) {
+    const anchor =
+      box.closest(".profile-link-chip") ||
+      document.querySelector("#add-profile-link");
+    if (!anchor) return;
+    const rect = anchor.getBoundingClientRect();
+    const x = Math.max(
+      12,
+      Math.min(
+        rect.left + rect.width / 2 - box.offsetWidth / 2,
+        innerWidth - box.offsetWidth - 12,
+      ),
+    );
+    const y = Math.max(
+      12,
+      Math.min(rect.bottom + 10, innerHeight - box.offsetHeight - 12),
+    );
+    box.style.position = "fixed";
+    box.style.right = "auto";
+    box.style.left = x + "px";
+    box.style.top = y + "px";
+    return;
+  }
   const tile = box.closest(".tile");
   if (!tile) return;
   const rect = tile.getBoundingClientRect(),

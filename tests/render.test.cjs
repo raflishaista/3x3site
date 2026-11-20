@@ -485,3 +485,103 @@ test("openDescription renders Name input at top and optional title placeholder a
   assert.match(fieldHtml, /placeholder="Title"/);
   assert.match(fieldHtml, /<label>Title/);
 });
+
+test("renderProfile in public mode displays safe horizontal hyperlinks below bio", () => {
+  run(`state = {
+    name: 'My Profile',
+    bio: 'Hello world',
+    username: 'testuser',
+    links: [
+      { name: 'YouTube', url: 'https://youtube.com/@demo' },
+      { name: 'Bad', url: 'javascript:alert(1)' }
+    ],
+    collections: [],
+    groups: []
+  };`);
+  run("renderProfile(false);");
+  const html = run("app.innerHTML");
+  assert.match(
+    html,
+    /<p class="bio">Hello world<\/p>\s*<nav class="profile-links"/,
+  );
+  assert.match(
+    html,
+    /<a class="profile-link" href="https:\/\/youtube\.com\/@demo"[^>]*>YouTube<\/a>/,
+  );
+  assert.doesNotMatch(html, /javascript:/);
+});
+
+test("renderProfile in editing mode renders hyperlink chips with remove X and plus button above save profile", () => {
+  run(`state = {
+    name: 'My Profile',
+    bio: 'Hello',
+    username: 'testuser',
+    links: [{ name: 'YouTube', url: 'https://youtube.com' }],
+    collections: [],
+    groups: []
+  };`);
+  run("profileDraft = structuredClone(state);");
+  run("renderProfile(true);");
+  const html = run("app.innerHTML");
+  const bioPos = html.indexOf('class="bio-input"');
+  const linksPos = html.indexOf('id="profile-links"');
+  const savePos = html.indexOf('class="profile-save"');
+  assert.ok(bioPos >= 0 && linksPos > bioPos && savePos > linksPos);
+  assert.match(html, /data-edit-link="0"[^>]*>YouTube<\/button>/);
+  assert.match(html, /class="profile-link-remove" data-remove-link="0"/);
+  assert.match(html, /class="profile-link-add" id="add-profile-link"/);
+});
+
+test("openProfileLinkEditor renders speech bubble with Name and Link inputs and saves updates", () => {
+  run(`
+    let createdLinkForm = null;
+    const mockChip = {
+      getBoundingClientRect: () => ({ top: 100, bottom: 130, left: 200, right: 280, width: 80 }),
+      append: () => {}
+    };
+    document.querySelector = (sel) => ({
+      addEventListener: () => {},
+      style: {},
+      remove: () => {},
+      focus: () => {},
+      innerHTML: '',
+      append: () => {},
+      getBoundingClientRect: () => ({ top: 100, bottom: 130, left: 200, right: 280, width: 80 })
+    });
+    document.querySelectorAll = () => [];
+    document.createElement = (tag) => {
+      const el = {
+        tag,
+        className: '',
+        innerHTML: '',
+        style: {},
+        offsetWidth: 260,
+        offsetHeight: 180,
+        classList: { contains: (c) => el.className.includes(c), toggle: () => {} },
+        setAttribute: () => {},
+        querySelector: (sel) => {
+          if (sel === '.close-description') return { onclick: null };
+          if (sel === '.description-error') return { textContent: '' };
+          return { focus: () => {} };
+        },
+        closest: (sel) => (sel.includes('.profile-link-chip') ? mockChip : null),
+        elements: {
+          name: { value: 'GitHub' },
+          url: { value: 'https://github.com/test' }
+        }
+      };
+      if (tag === 'form') createdLinkForm = el;
+      return el;
+    };
+    profileDraft = { name: 'My Profile', links: [] };
+    const addBtn = { closest: () => null, focus: () => {} };
+    openProfileLinkEditor(null, addBtn);
+    createdLinkForm.onsubmit({ preventDefault: () => {} });
+  `);
+  const formHtml = run("createdLinkForm.innerHTML");
+  assert.match(formHtml, /name="name"/);
+  assert.match(formHtml, /name="url"/);
+  assert.equal(run("profileDraft.links.length"), 1);
+  assert.equal(run("profileDraft.links[0].name"), "GitHub");
+  assert.equal(run("profileDraft.links[0].url"), "https://github.com/test");
+});
